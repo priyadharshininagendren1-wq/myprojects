@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+.venv/
+venv/
+
+# Flask logs
+*.log
+
+# Docker
+# (Images are not tracked)
+**/docker-compose*.yml
+
+# OS
+.DS_Store
+Thumbs.db
+

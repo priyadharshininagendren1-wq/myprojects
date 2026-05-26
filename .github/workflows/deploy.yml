@@ -1,0 +1,55 @@
+name: CI/CD - Deploy Smart Auto-Deployment System to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "--- Preparing directory ---"
+            mkdir -p "${{ secrets.AWS_DEPLOY_DIR }}"
+            cd "${{ secrets.AWS_DEPLOY_DIR }}"
+
+            echo "--- Pull latest code ---"
+            # Clone once (one-time). After that, we just do `git pull`.
+            if [ -d .git ]; then
+              git pull
+            else
+              # REPLACE URL below with your GitHub repo clone URL.
+              # Example: https://github.com/<user>/<repo>.git
+              REPO_URL="${{ secrets.GITHUB_REPO_URL }}"
+              if [ -z "$REPO_URL" ]; then
+                echo "Missing GITHUB_REPO_URL secret. Add it in GitHub secrets."
+                exit 1
+              fi
+              git clone "$REPO_URL" .
+            fi
+
+
+            echo "--- Build Docker image ---"
+            docker build -t smart-auto-deploy:latest .
+
+            echo "--- Stop old container (if any) ---"
+            docker rm -f smart-auto-deploy || true
+
+            echo "--- Run new container ---"
+            docker run -d --name smart-auto-deploy -p 5000:5000 smart-auto-deploy:latest
+
+            echo "--- Done ---"
+
